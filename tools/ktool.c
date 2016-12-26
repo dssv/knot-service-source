@@ -300,8 +300,7 @@ static void read_json_entry(struct json_object *jobj,
 	knot_msg_data *msg = user_data;
 	knot_data *kdata = &(msg->payload);
 	knot_value_type_bool *kbool;
-	knot_value_type_float *kfloat;
-	knot_value_type_int *kint;
+	knot_value_type_number *knumber;
 	int32_t ipart, fpart;
 	enum json_type type;
 	const char *str;
@@ -324,18 +323,19 @@ static void read_json_entry(struct json_object *jobj,
 			if (sscanf(str, "%d.%d", &ipart, &fpart) != 2)
 				break;
 
-			kfloat = (knot_value_type_float *) &(kdata->
-								values.val_f);
-			kfloat->value_int = ipart;
-			kfloat->value_dec = fpart;
-			kfloat->multiplier = 1; /* TODO: */
-			msg->hdr.payload_len = sizeof(knot_value_type_float);
+			knumber = (knot_value_type_number *) &(kdata->
+								values.val_n);
+			knumber->value_int = ipart;
+			knumber->value_dec = fpart;
+			knumber->multiplier = 1; /* TODO: */
+			msg->hdr.payload_len = sizeof(knot_value_type_number);
 			break;
 		case json_type_int:
-			kint = (knot_value_type_int *) &(kdata->values.val_i);
-			kint->value = json_object_get_int(jobj);
-			kint->multiplier = 1;
-			msg->hdr.payload_len = sizeof(knot_value_type_int);
+			knumber = (knot_value_type_number *) &(kdata->values.val_n);
+			knumber->value_int = json_object_get_int(jobj);
+			knumber->value_dec = 0;
+			knumber->multiplier = 1;
+			msg->hdr.payload_len = sizeof(knot_value_type_number);
 			break;
 		case json_type_string:
 		case json_type_null:
@@ -449,9 +449,11 @@ static int write_knot_data(struct json_object *jobj)
 	}
 
 	msg.hdr.type = KNOT_MSG_DATA;
+	msg.notify = 1;
 	/* Payload len is set by read_json_entry() */
 
 	msg.hdr.payload_len += sizeof(msg.sensor_id);
+	msg.hdr.payload_len += sizeof(msg.notify);
 	nbytes = write(sock, &msg, sizeof(msg.hdr) + msg.hdr.payload_len);
 	if (nbytes < 0) {
 		err = errno;
@@ -756,11 +758,11 @@ static gboolean proto_receive(GIOChannel *io, GIOCondition cond,
 		printf("notify_flags: %d\n", recv.config.values.notify_flags);
 		printf("time_sec: %d\n", recv.config.values.time_sec);
 		printf("lower_limit: %d.%d\n",
-				recv.config.values.lower_limit.val_f.value_int,
-				recv.config.values.lower_limit.val_f.value_dec);
+				recv.config.values.lower_limit.val_n.value_int,
+				recv.config.values.lower_limit.val_n.value_dec);
 		printf("upper_limit: %d.%d\n",
-				recv.config.values.upper_limit.val_f.value_int,
-				recv.config.values.upper_limit.val_f.value_dec);
+				recv.config.values.upper_limit.val_n.value_int,
+				recv.config.values.upper_limit.val_n.value_dec);
 		resp.hdr.type = KNOT_MSG_CONFIG_RESP;
 		resp.hdr.payload_len = sizeof(resp.item.sensor_id);
 		resp.item.sensor_id = recv.config.sensor_id;
@@ -770,12 +772,40 @@ static gboolean proto_receive(GIOChannel *io, GIOCondition cond,
 			printf("node_ops: %s(%d)\n", strerror(err), err);
 			return TRUE;
 		}
+		if(!(recv.config.values.event_flags &
+					recv.config.values.notify_flags))
+			break;
+		switch (recv.config.sensor_id) {
+		case 251:
+			jobj = json_object_from_file("json/data-volume.json");
+			break;
+		case 252:
+			jobj = json_object_from_file("json/data-temperature.json");
+			break;
+		case 253:
+			jobj = json_object_from_file("json/data-switch.json");
+			break;
+		default:
+			jobj = NULL;
+		}
+
+		if (!jobj) {
+			printf("json file(%s): failed to read from file!\n",
+								opt_json);
+			return -EINVAL;
+		}
+
+		json_object_foreach(jobj, print_json_value, NULL);
+		write_knot_data(jobj);
+		json_object_put(jobj);
+
+
 		break;
 	case KNOT_MSG_SET_DATA:
 		printf("sensor_id: %d\n", recv.data.sensor_id);
 		printf("value: %d.%d\n",
-				recv.data.payload.values.val_f.value_int,
-				recv.data.payload.values.val_f.value_dec);
+				recv.data.payload.values.val_n.value_int,
+				recv.data.payload.values.val_n.value_dec);
 		resp.hdr.type = KNOT_MSG_DATA_RESP;
 		resp.hdr.payload_len = sizeof(knot_data) +
 						sizeof(resp.data.sensor_id);
