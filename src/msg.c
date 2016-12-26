@@ -233,11 +233,11 @@ static int config_is_valid(GSList *config_list)
 					(KNOT_EVT_FLAG_LOWER_THRESHOLD |
 					KNOT_EVT_FLAG_UPPER_THRESHOLD)) {
 
-			diff_int = config->values.upper_limit.val_f.value_int -
-				config->values.lower_limit.val_f.value_int;
+			diff_int = config->values.upper_limit.val_n.value_int -
+				config->values.lower_limit.val_n.value_int;
 
-			diff_dec = config->values.upper_limit.val_f.value_dec -
-				config->values.lower_limit.val_f.value_dec;
+			diff_dec = config->values.upper_limit.val_n.value_dec -
+				config->values.lower_limit.val_n.value_dec;
 
 			if (diff_int < 0)
 				/*
@@ -276,14 +276,14 @@ static void parse_json_value_types(json_object *jobj, knot_value_types *limit)
 		/* FIXME: how to handle overflow? */
 		if (sscanf(str, "%d.%d", &ipart, &fpart) != 2)
 			break;
-		limit->val_f.value_int = ipart;
-		limit->val_f.value_dec = fpart;
-		limit->val_f.multiplier = 1; /* TODO: */
+		limit->val_n.value_int = ipart;
+		limit->val_n.value_dec = fpart;
+		limit->val_n.multiplier = 1; /* TODO: */
 		break;
 	case json_type_int:
-
-		limit->val_i.value = json_object_get_int(jobjkey);
-		limit->val_i.multiplier = 1;
+		limit->val_n.value_int = json_object_get_int(jobjkey);
+		limit->val_n.value_dec = 0;
+		limit->val_n.multiplier = 1; /* TODO: */
 		break;
 	case json_type_string:
 	case json_type_null:
@@ -1431,18 +1431,14 @@ static int8_t msg_data(int sock, int proto_sock,
 						json_object_new_int(sensor_id));
 
 	switch (schema->values.value_type) {
-	case KNOT_VALUE_TYPE_INT:
-		json_object_object_add(jobj, "value",
-				json_object_new_int(kdata->values.val_i.value));
-		break;
-	case KNOT_VALUE_TYPE_FLOAT:
-
+	case KNOT_VALUE_TYPE_NUMBER:
+		/* If value_dec is 0, JSON handles it automatically */
 		/* FIXME: precision */
-		len = sprintf(str, "%d", kdata->values.val_f.value_dec);
+		len = sprintf(str, "%d", kdata->values.val_n.value_dec);
 
-		doubleval = kdata->values.val_f.multiplier *
-			(kdata->values.val_f.value_int +
-			(kdata->values.val_f.value_dec / pow(10, len)));
+		doubleval = kdata->values.val_n.multiplier *
+			(kdata->values.val_n.value_int +
+			(kdata->values.val_n.value_dec / pow(10, len)));
 
 		json_object_object_add(jobj, "value",
 					json_object_new_double(doubleval));
@@ -1513,7 +1509,7 @@ static int8_t msg_config_resp(int sock, const knot_msg_item *rsp)
 }
 
 /*
- * Updates de 'devices' db, removing the sensor_id that was acknowledged by the
+ * Updates the 'devices' db, removing the sensor_id that was acknowledged by the
  * THING.
  */
 static void update_device_setdata(const struct proto_ops *proto_ops,
@@ -1656,18 +1652,14 @@ static int8_t msg_setdata_resp(int sock, int proto_sock,
 						json_object_new_int(sensor_id));
 
 	switch (schema->values.value_type) {
-	case KNOT_VALUE_TYPE_INT:
-		json_object_object_add(jobj, "value",
-				json_object_new_int(kdata->values.val_i.value));
-		break;
-	case KNOT_VALUE_TYPE_FLOAT:
-
+	case KNOT_VALUE_TYPE_NUMBER:
+		/* If the value_dec is 0, JSON handles it automatically */
 		/* FIXME: precision */
-		len = sprintf(str, "%d", kdata->values.val_f.value_dec);
+		len = sprintf(str, "%d", kdata->values.val_n.value_dec);
 
-		doubleval = kdata->values.val_f.multiplier *
-			(kdata->values.val_f.value_int +
-			(kdata->values.val_f.value_dec / pow(10, len)));
+		doubleval = kdata->values.val_n.multiplier *
+			(kdata->values.val_n.value_int +
+			(kdata->values.val_n.value_dec / pow(10, len)));
 
 		json_object_object_add(jobj, "value",
 					json_object_new_double(doubleval));
