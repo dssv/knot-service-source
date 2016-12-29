@@ -142,66 +142,18 @@ static int config_is_valid(GSList *config_list)
 	knot_msg_config *config;
 	struct config *cfg;
 	GSList *list;
-	int diff_int, diff_dec;
+	int config_valid;
 
 	for (list = config_list; list; list = g_slist_next(list)) {
 		cfg = list->data;
 		config = &cfg->kmcfg;
 
-		/* Check if event_flags are valid */
-		if ((config->values.event_flags | KNOT_EVT_FLAG_NONE) &&
-			!(config->values.event_flags & (KNOT_EVT_FLAG_TIME |
-						KNOT_EVT_FLAG_LOWER_THRESHOLD |
-						KNOT_EVT_FLAG_UPPER_THRESHOLD |
-						KNOT_EVT_FLAG_CHANGE |
-						KNOT_EVT_FLAG_UNREGISTERED)))
-			/*
-			 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
-			 * KNOT_INVALID_CONFIG in new protocol
-			 */
-			return KNOT_ERROR_UNKNOWN;
-
-		/* Check consistency of time_sec */
-		if (config->values.event_flags & KNOT_EVT_FLAG_TIME) {
-			if (config->values.time_sec == 0)
-				/*
-				 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
-				 * KNOT_INVALID_CONFIG in new protocol
-				 */
-				return KNOT_ERROR_UNKNOWN;
-		} else {
-			if (config->values.time_sec > 0)
-				/*
-				 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
-				 * KNOT_INVALID_CONFIG in new protocol
-				 */
-				return KNOT_ERROR_UNKNOWN;
-		}
-
-		/* Check consistency of limits */
-		if (config->values.event_flags &
-					(KNOT_EVT_FLAG_LOWER_THRESHOLD |
-					KNOT_EVT_FLAG_UPPER_THRESHOLD)) {
-
-			diff_int = config->values.upper_limit.val_f.value_int -
-				config->values.lower_limit.val_f.value_int;
-
-			diff_dec = config->values.upper_limit.val_f.value_dec -
-				config->values.lower_limit.val_f.value_dec;
-
-			if (diff_int < 0)
-				/*
-				 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
-				 * KNOT_INVALID_CONFIG in new protocol
-				 */
-				return KNOT_ERROR_UNKNOWN;
-			else if (diff_int == 0 && diff_dec <= 0)
-				/*
-				 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
-				 * KNOT_INVALID_CONFIG in new protocol
-				 */
-				return KNOT_ERROR_UNKNOWN;
-		}
+		config_valid = knot_config_is_valid(config->values.event_flags,
+						config->values.time_sec,
+						config->values.lower_limit,
+						config->values.upper_limit);
+		if (config_valid < 0)
+			return config_valid;
 	}
 	return KNOT_SUCCESS;
 }
