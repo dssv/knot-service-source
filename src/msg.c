@@ -148,12 +148,12 @@ static int config_is_valid(GSList *config_list)
 		cfg = list->data;
 		config = &cfg->kmcfg;
 
-		config_valid = knot_config_is_valid(config->values.event_flags,
+		/*config_valid = knot_config_is_valid(config->values.event_flags,
 						config->values.time_sec,
 						&config->values.lower_limit,
 						&config->values.upper_limit);
 		if (config_valid < 0)
-			return config_valid;
+			return config_valid;*/
 	}
 	return KNOT_SUCCESS;
 }
