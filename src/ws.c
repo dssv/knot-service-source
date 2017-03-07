@@ -589,6 +589,50 @@ done:
 	return err;
 }
 
+static int ws_message(int sock, const char *to_uuid, const char *topic, const char *jreq)
+{
+	int err;
+	struct json_object *jmsg, *jop,*jarray;
+	const char *jobjstr;
+	GSList *entry;
+
+	jmsg = json_object_new_array();
+	jarray = json_object_new_array();
+	jop = json_object_new_object();
+
+	json_object_array_add(jmsg, json_object_new_string("message"));
+	json_object_array_add(jarray, json_object_new_string("*"));
+	json_object_object_add(jop, "devices", jarray);
+	if (topic)
+		json_object_object_add(jop, "topic",
+						json_object_new_string(topic));
+
+	json_object_object_add(jop, "data", json_tokener_parse(jreq));
+	json_object_array_add(jmsg, jop);
+	jobjstr = json_object_to_json_string(jmsg);
+
+	psd = g_hash_table_lookup(wstable, GINT_TO_POINTER(sock));
+
+	entry = g_slist_nth(wsis, psd->index);
+	if (entry->data == NULL) {
+		log_error("Not found");
+		err = -EBADF;
+		goto done;
+	}
+	psd->len = snprintf((char *)&psd->buffer + LWS_PRE, MAX_PAYLOAD, "%d%s",
+						MESSAGE_PREFIX, jobjstr);
+
+	log_info("JSON TX: %s", psd->buffer + LWS_PRE);
+
+	lws_callback_on_writable(entry->data);
+	err = 0;
+
+done:
+	json_object_put(jmsg);
+
+	return err;
+}
+
 static void handle_cloud_response(const char *resp, struct lws *wsi)
 {
 	int packet_type, offset = 0, len = strlen(resp);
@@ -971,5 +1015,6 @@ struct proto_ops proto_ws = {
 	.data = ws_data,
 	.fetch = ws_device,
 	.async = proto_register_watch,
-	.setdata = ws_update
+	.setdata = ws_update,
+	.message = ws_message
 };
