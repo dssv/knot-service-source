@@ -384,7 +384,7 @@ static GSList *parse_device_config(const char *json_str)
 	json_object *jobj, *jobjarray, *jobjentry, *jobjkey;
 	GSList *list = NULL;
 	struct config *entry;
-	int sensor_id, event_flags, time_sec, i;
+	int sensor_id, event_flags, time_sec, i, notify_flags;
 	knot_value_types lower_limit, upper_limit;
 	json_type jtype;
 
@@ -435,6 +435,18 @@ static GSList *parse_device_config(const char *json_str)
 
 		event_flags = json_object_get_int(jobjkey);
 
+		/* If 'notify_flags' is defined, gets it */
+
+		notify_flags = 0;
+		if (json_object_object_get_ex(jobjentry, "notify_flags",
+								 &jobjkey)) {
+			if (json_object_get_type(jobjkey) != json_type_int)
+				goto done;
+
+			notify_flags = json_object_get_int(jobjkey);
+		}
+
+
 		/* If 'time_sec' is defined, gets it */
 
 		time_sec = 0;
@@ -478,6 +490,7 @@ static GSList *parse_device_config(const char *json_str)
 		entry = g_new0(struct config, 1);
 		entry->kmcfg.sensor_id = sensor_id;
 		entry->kmcfg.values.event_flags = event_flags;
+		entry->kmcfg.values.notify_flags = notify_flags;
 		entry->kmcfg.values.time_sec = time_sec;
 		memcpy(&(entry->kmcfg.values.lower_limit), &lower_limit,
 						sizeof(knot_value_types));
