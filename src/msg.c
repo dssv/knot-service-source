@@ -1468,6 +1468,12 @@ static int8_t msg_data(int sock, int proto_sock,
 	if (json.data)
 		free(json.data);
 
+	/* Broadcast the data */
+	if (kmdata->notify) {
+		err = proto_ops->message(proto_sock, NULL, NULL, jobjstr);
+		log_info("Message sent");
+	}
+
 	json_object_put(jobj);
 
 	if (err < 0) {
