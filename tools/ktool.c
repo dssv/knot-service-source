@@ -753,6 +753,7 @@ static gboolean proto_receive(GIOChannel *io, GIOCondition cond,
 	case KNOT_MSG_SET_CONFIG:
 		printf("sensor_id: %d\n", recv.config.sensor_id);
 		printf("event_flags: %d\n", recv.config.values.event_flags);
+		printf("notify_flags: %d\n", recv.config.values.notify_flags);
 		printf("time_sec: %d\n", recv.config.values.time_sec);
 		printf("lower_limit: %d.%d\n",
 				recv.config.values.lower_limit.val_f.value_int,
