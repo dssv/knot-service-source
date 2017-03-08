@@ -132,6 +132,49 @@ static char *checksum_config(json_object *jobjkey)
 }
 
 /*
+ * If the evt_flag for a flag is not set and the notify flag for the same flag
+ * is set, returns error.
+ */
+static int notify_not_valid(uint8_t evt_flags, uint8_t ntf_flags)
+{
+	/* If any flag is set */
+	if(evt_flags | KNOT_EVT_FLAG_NONE) {
+		if(!(evt_flags & KNOT_EVT_FLAG_TIME))
+			if(ntf_flags & KNOT_EVT_FLAG_TIME)
+				/*
+				 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
+				 */
+				return KNOT_ERROR_UNKNOWN;
+		if(!(evt_flags & KNOT_EVT_FLAG_LOWER_THRESHOLD))
+			if(ntf_flags & KNOT_EVT_FLAG_LOWER_THRESHOLD)
+				/*
+				 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
+				 */
+				return KNOT_ERROR_UNKNOWN;
+		if(!(evt_flags & KNOT_EVT_FLAG_UPPER_THRESHOLD))
+			if(ntf_flags & KNOT_EVT_FLAG_UPPER_THRESHOLD)
+				/*
+				 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
+				 */
+				return KNOT_ERROR_UNKNOWN;
+		if(!(evt_flags & KNOT_EVT_FLAG_CHANGE))
+			if(ntf_flags & KNOT_EVT_FLAG_CHANGE)
+				/*
+				 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
+				 */
+				return KNOT_ERROR_UNKNOWN;
+	} else {
+		if(ntf_flags)
+			/*
+			 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
+			 */
+			return KNOT_ERROR_UNKNOWN;
+	}
+
+	return KNOT_SUCCESS;
+}
+
+/*
  * Checks if the config message received from the cloud is valid.
  * Validates if the values are valid and if the event_flags are consistent
  * with desired events.
@@ -143,7 +186,7 @@ static int config_is_valid(GSList *config_list)
 	knot_msg_config *config;
 	struct config *cfg;
 	GSList *list;
-	int diff_int, diff_dec;
+	int diff_int, diff_dec, err;
 
 	for (list = config_list; list; list = g_slist_next(list)) {
 		cfg = list->data;
@@ -161,6 +204,12 @@ static int config_is_valid(GSList *config_list)
 			 * KNOT_INVALID_CONFIG in new protocol
 			 */
 			return KNOT_ERROR_UNKNOWN;
+
+		/* Check if notify_flags are valid */
+		err = notify_not_valid(config->values.event_flags,
+					config->values.notify_flags);
+		if(err)
+			return err;
 
 		/* Check consistency of time_sec */
 		if (config->values.event_flags & KNOT_EVT_FLAG_TIME) {
