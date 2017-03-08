@@ -1230,7 +1230,7 @@ static int8_t msg_schema(int sock, int proto_sock,
 }
 
 /*
- * Updates de 'devices' db, removing the sensor_id that just sent the data
+ * Updates the 'devices' db, removing the sensor_id that just sent the data
  */
 static void update_device_getdata(const struct proto_ops *proto_ops,
 					int proto_sock, char *uuid, char *token,
