@@ -131,48 +131,6 @@ static char *checksum_config(json_object *jobjkey)
 	return g_compute_checksum_for_string(G_CHECKSUM_SHA1, c, strlen(c));
 }
 
-/*
- * If the evt_flag for a flag is not set and the notify flag for the same flag
- * is set, returns error.
- */
-static int notify_not_valid(uint8_t evt_flags, uint8_t ntf_flags)
-{
-	/* If any flag is set */
-	if(evt_flags | KNOT_EVT_FLAG_NONE) {
-		if(!(evt_flags & KNOT_EVT_FLAG_TIME))
-			if(ntf_flags & KNOT_EVT_FLAG_TIME)
-				/*
-				 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
-				 */
-				return KNOT_ERROR_UNKNOWN;
-		if(!(evt_flags & KNOT_EVT_FLAG_LOWER_THRESHOLD))
-			if(ntf_flags & KNOT_EVT_FLAG_LOWER_THRESHOLD)
-				/*
-				 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
-				 */
-				return KNOT_ERROR_UNKNOWN;
-		if(!(evt_flags & KNOT_EVT_FLAG_UPPER_THRESHOLD))
-			if(ntf_flags & KNOT_EVT_FLAG_UPPER_THRESHOLD)
-				/*
-				 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
-				 */
-				return KNOT_ERROR_UNKNOWN;
-		if(!(evt_flags & KNOT_EVT_FLAG_CHANGE))
-			if(ntf_flags & KNOT_EVT_FLAG_CHANGE)
-				/*
-				 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
-				 */
-				return KNOT_ERROR_UNKNOWN;
-	} else {
-		if(ntf_flags)
-			/*
-			 * TODO: DEFINE KNOT_CONFIG ERRORS IN PROTOCOL
-			 */
-			return KNOT_ERROR_UNKNOWN;
-	}
-
-	return KNOT_SUCCESS;
-}
 
 /*
  * Checks if the config message received from the cloud is valid.
